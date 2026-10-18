@@ -21,8 +21,8 @@ Crate. .NET 10, Native AOT.
 3. `micmode cardioid` (or `stereo` / `omni` / `off`); no administrator needed for that.
 4. `micmode status` should now say `effect chain: ok`.
 
-`micmode unfix` puts the driver's order back. A driver reinstall does the same, and `status` will
-say `broken` again: run `micmode fix` once more.
+The fix survives a reboot. `micmode unfix` puts the driver's order back. A driver reinstall does
+the same, and `status` will say `broken` again: run `micmode fix` once more.
 
 ## Why the modes did nothing
 
@@ -70,11 +70,12 @@ on the microphone endpoint:
 Crate uses, with no elevation. Realtek Audio Console has Fortemedia controls too, but hides them
 once the ASUS Fortemedia driver extension is installed. Details: [`notes/`](notes/).
 
-**With Armoury Crate still installed**, its `ArmouryCrate.UserSessionHelper.exe` writes its own
-last choice back a few seconds after Windows Audio starts, including the restart `micmode fix`
-does. Either pick the mode in Armoury Crate (it writes the same values, so its switch works too
-once the chain is fixed) or uninstall it. Its "Two-way AI noise cancelation" is a separate thing — Intelligo, running inside Armoury Crate —
-and leaves with it.
+**With Armoury Crate still installed**, its `ArmouryCrate.UserSessionHelper.exe` writes the mode
+last chosen *in Armoury Crate* back a few seconds after Windows Audio starts: at every boot, and
+after the restart `micmode fix` does. A mode set with `micmode` lasts until then. Either pick the
+mode in Armoury Crate (it writes the same values, so its switch works too once the chain is fixed)
+or uninstall it. Its "Two-way AI noise cancelation" is a separate thing — Intelligo, running
+inside Armoury Crate — and leaves with it.
 
 ## `micmode`
 

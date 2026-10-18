@@ -67,7 +67,8 @@ Two side effects to know about:
   Fortemedia engine instead of around it.
   Levels with the modes off are unchanged.
 
-A driver reinstall or an endpoint rebuild writes the INF order back.
+The fixed order survives a reboot (checked). A driver reinstall or an endpoint rebuild writes the
+INF order back.
 
 ## How it was found
 

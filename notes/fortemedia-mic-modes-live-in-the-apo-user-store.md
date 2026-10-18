@@ -33,9 +33,10 @@ result into the APO. Armoury Crate's `DenoiseAIPlugin` also has an RPC client fo
 
 Two other writers show up in Process Monitor around a restart of Windows Audio:
 
-- `ArmouryCrate.UserSessionHelper.exe` writes its own last choice of K2/K7 back about five seconds
-  after the service starts, so while Armoury Crate is installed a mode set by this tool lasts only
-  until the next audio restart (including the one `micmode fix` does).
+- `ArmouryCrate.UserSessionHelper.exe` writes the K2/K7 last chosen in Armoury Crate back about
+  five seconds after the service starts, so while Armoury Crate is installed a mode set by this
+  tool lasts only until the next audio restart: every boot (confirmed by rebooting), and the
+  restart `micmode fix` does.
 - `FMService64.exe` rewrites K9001 over and over, cycling `0`, `0x20000000` and `0x10000000`
   (118 writes in a minute) -- which is why K9001 never keeps a value written from outside.
 
