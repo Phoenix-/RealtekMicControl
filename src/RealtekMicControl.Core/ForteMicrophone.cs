@@ -14,12 +14,14 @@ namespace RealtekMicControl.Core;
 public sealed class ForteMicrophone
 {
     private readonly Func<bool, IForteSettingsStore> _openStore;
+    private readonly IEffectChainStore _effectChain;
 
-    internal ForteMicrophone(string id, string name, Func<bool, IForteSettingsStore> openStore)
+    internal ForteMicrophone(string id, string name, Func<bool, IForteSettingsStore> openStore, IEffectChainStore effectChain)
     {
         Id = id;
         Name = name;
         _openStore = openStore;
+        _effectChain = effectChain;
     }
 
     /// <summary>The endpoint id, <c>{0.0.1.00000000}.{guid}</c>.</summary>
@@ -60,6 +62,50 @@ public sealed class ForteMicrophone
 
     public ForteState SetNoiseSuppression(bool enabled) => Update(state => state.WithNoiseSuppression(enabled));
 
+    /// <summary>Whether Windows actually runs the Fortemedia engine the settings above configure.</summary>
+    public EffectChainState ReadEffectChain() => ModeEffectChain.Classify(_effectChain.ReadChain());
+
+    /// <summary>
+    /// Moves the Fortemedia APO to the end of the mode-effect list, keeping the driver's order for
+    /// <see cref="RestoreEffectChain"/>. Returns false when there is nothing to fix. Needs an
+    /// administrator; takes effect when <see cref="AudioService.Restart"/> runs.
+    /// </summary>
+    public bool FixEffectChain()
+    {
+        var chain = _effectChain.ReadChain();
+        if (ModeEffectChain.Classify(chain) != EffectChainState.Broken)
+        {
+            return false;
+        }
+
+        // The copy first: if it cannot be written, the list is left as the driver set it.
+        _effectChain.WriteBackup(chain);
+        _effectChain.WriteChain(ModeEffectChain.WithForteLast(chain!));
+        return true;
+    }
+
+    /// <summary>
+    /// Puts the driver's order saved by <see cref="FixEffectChain"/> back. Returns false when there
+    /// is none, or when the list has changed since (a driver reinstall writes its own order back).
+    /// </summary>
+    public bool RestoreEffectChain()
+    {
+        if (_effectChain.ReadBackup() is not { } original)
+        {
+            return false;
+        }
+
+        var fixedByUs = _effectChain.ReadChain() is { } current
+                        && ModeEffectChain.SameOrder(current, ModeEffectChain.WithForteLast(original));
+        if (fixedByUs)
+        {
+            _effectChain.WriteChain(original);
+        }
+
+        _effectChain.WriteBackup(null);
+        return fixedByUs;
+    }
+
     /// <summary>
     /// Active capture endpoints whose Fortemedia capture APO exposes the mode settings. Normally
     /// exactly one, the internal mic array; none when the driver set is incomplete.
@@ -97,7 +143,8 @@ public sealed class ForteMicrophone
                 continue;
             }
 
-            found.Add(new ForteMicrophone(GetId(device), GetFriendlyName(device) ?? "Microphone", Open));
+            var id = GetId(device);
+            found.Add(new ForteMicrophone(id, GetFriendlyName(device) ?? "Microphone", Open, new RegistryEffectChainStore(id)));
         }
 
         return found;

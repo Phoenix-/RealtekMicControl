@@ -31,6 +31,14 @@ The driver INF seeds both `Default` and `User` from `oemxaudioextfm_asus.inf`
 result into the APO. Armoury Crate's `DenoiseAIPlugin` also has an RPC client for the same service
 (`FMAPOCTL`), but the values it persists are just these.
 
+Two other writers show up in Process Monitor around a restart of Windows Audio:
+
+- `ArmouryCrate.UserSessionHelper.exe` writes its own last choice of K2/K7 back about five seconds
+  after the service starts, so while Armoury Crate is installed a mode set by this tool lasts only
+  until the next audio restart (including the one `micmode fix` does).
+- `FMService64.exe` rewrites K9001 over and over, cycling `0`, `0x20000000` and `0x10000000`
+  (118 writes in a minute) -- which is why K9001 never keeps a value written from outside.
+
 ## How the tool writes them
 
 Not through the registry: those keys are writable by the audio services only. Windows 11's

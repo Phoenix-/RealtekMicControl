@@ -1,8 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <!-- UI-agnostic: Core Audio COM and nothing else, so both the console CLI and the WinUI app
-         sit on it and the logic stays testable without a sound card. -->
+    <!-- UI-agnostic: Core Audio COM, the endpoint's registry keys and the audio service, so any
+         front end can sit on it and the logic stays testable without a sound card. -->
     <TargetFramework>net10.0-windows</TargetFramework>
     <RootNamespace>RealtekMicControl.Core</RootNamespace>
     <IsAotCompatible>true</IsAotCompatible>
