@@ -37,8 +37,11 @@ differently per mode.
 
 - One point source and level measurements. A beamformer could in principle change the balance
   between a voice and *diffuse* noise without moving a single source's level; that was not tested.
-- Armoury Crate was only measured with the stream kept open (live). The tool's own writes were
-  measured live and with a fresh stream per take; neither showed a difference.
+- Both ways of switching were measured both ways of streaming: the tool's writes and Armoury
+  Crate's clicks, each with the stream kept open and with a fresh SPEECH stream per take (the case
+  of a call app started after the change). Armoury Crate + fresh stream, source behind the lid:
+  +37.2 / +36.4 / +36.9 / +37.0 dB for Off / Cardioid / Stereo / Omni -- cardioid 0.6 dB *above*
+  omni, i.e. noise.
 - The Fortemedia "intelligent noise suppression" bit (K9001) could not be turned off for the runs:
   written through the property store it snaps back within a second (`FMService64` owns it).
 
