@@ -33,6 +33,35 @@ The raw stream has four channels: 0 and 1 are a front-facing pair, 2 and 3 carry
 microphone twice. So the hardware for a front/back beamformer exists; nothing measured here used it
 differently per mode.
 
+The one thing the switch does move, consistently across every run: in the DEFAULT stream, with
+modes on, more of the pauses between words are gated to digital silence -- 12-22 % of 100 ms
+windows against 2-7 % with modes off. So the APO reacts to K7; it just does nothing directional.
+
+## Chasing a broken chain
+
+Followed up on the suspicion that the ASUS / Realtek / Fortemedia stack simply never assembled:
+
+- **The APO is loaded but its engine is not.** During capture `audiodg.exe` has `FMAPO64.dll`
+  12.01.6003.5906 (1.5 MB) loaded, but none of the engines it loads by name (`fmaudvb..f.dll`, up to
+  43 MB each) nor `FM_Speech_PP64.dll`. Its strings show silent fallbacks:
+  `FindForteMediaInterface() fail`, `IOCTL_SOUNDSOURCE_SET_DIGIMIC_HWGAIN fail`,
+  `SAM_InitEx fail`, `...bypass`. Its status keys under `HKLM\SOFTWARE\Fortemedia` were last
+  written at install time (2025-01-03) and never since.
+- **ASUS's own monolithic APO changes nothing.** The two `SWC\VEN_1319&AID_0002` components were
+  forced onto ASUS's 12.1.6003.5872 package (`UpdateDriverForPlugAndPlayDevices` with
+  `INSTALLFLAG_FORCE`), which puts a 31 MB `FMAPO64.dll` with the engine built in and
+  `FMService64` 0.0.5.55 in System32; `audiodg` loaded it. Same measurements as before.
+- **Two stores, out of sync.** The endpoint's root `FxProperties` -- the classic store an APO is
+  handed at initialization -- holds its own K2/K7 (plus K4/K31/K50/K90/K91 that the per-APO store
+  lacks), and its K7 said *modes off* (`0x890004`) the whole time, whatever Armoury Crate set in
+  `{CFMAPOCAP}\User`. Nothing syncs the two. BUILTIN\Users have SetValue on the root key. Writing
+  both stores per take (`MicProbe --root`, fresh stream each time) on 5872: same measurements.
+
+Where exactly the chain breaks was not found; the leading suspect remains the APO not finding the
+Fortemedia interface it expects from the Realtek driver (6.0.9123.1, February 2021 -- the newest
+ASUS ships for this model). The APO has a debug log (`C:\FMSAM\dbglog_%p.log`, gated by a
+`DebugMode` / `DebugFunction` switch whose location was not found); that is the next lever.
+
 ## Caveats
 
 - One point source and level measurements. A beamformer could in principle change the balance

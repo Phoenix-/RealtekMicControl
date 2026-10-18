@@ -21,7 +21,7 @@ internal static class Program
             Console.WriteLine("""
                 MicProbe [--positions front,left,right,back] [--settings off,cardioid,stereo,omni]
                          [--configs default,default-reopen,comms,comms-reopen]
-                         [--seconds 4] [--settle 1.5] [--ns keep|off|on] [--no-raw] [--manual] [--out DIR]
+                         [--seconds 4] [--settle 1.5] [--ns keep|off|on] [--no-raw] [--manual] [--root] [--out DIR]
 
                 --configs  how the processed stream is opened, each run in turn per position:
                            default        DEFAULT processing mode (an ordinary app), one stream
@@ -31,6 +31,8 @@ internal static class Program
                 --no-raw   do not record the raw reference stream alongside
                 --manual   do not switch the settings; ask for each one to be picked in Armoury
                            Crate instead (and leave whatever it set at the end)
+                --root     also write K2/K7 into the endpoint's root FxProperties, the classic
+                           store an APO is handed at initialization (restored at the end)
 
                 Levels are measured in the 150-7000 Hz band the test signal covers, so desk rumble
                 and fan noise below it do not skew the comparison.
@@ -53,10 +55,20 @@ internal static class Program
         }
 
         var original = mic.Read();
+        var originalRoot = options.Root ? RootFxStore.Read(mic.Id) : null;
+        void RestoreAll()
+        {
+            Restore(mic, original);
+            if (originalRoot is { } root)
+            {
+                RootFxStore.Write(mic.Id, root);
+            }
+        }
+
         Console.CancelKeyPress += (_, e) =>
         {
             e.Cancel = false;
-            Restore(mic, original);
+            RestoreAll();
         };
 
         try
@@ -65,7 +77,7 @@ internal static class Program
         }
         finally
         {
-            Restore(mic, original);
+            RestoreAll();
         }
     }
 
@@ -133,7 +145,11 @@ internal static class Program
                     }
                     else
                     {
-                        mic.Apply(setting);
+                        var applied = mic.Apply(setting);
+                        if (options.Root)
+                        {
+                            RootFxStore.Write(mic.Id, applied);
+                        }
                     }
                     using var perTake = config.Reopen ? CaptureStream.Open(mic.Id, category: config.Category) : null;
                     var source = perTake ?? live!;
@@ -369,6 +385,7 @@ internal sealed record Options(
     bool? NoiseSuppression,
     bool Raw,
     bool Manual,
+    bool Root,
     string OutputDirectory)
 {
     public static Options? Parse(string[] args)
@@ -380,7 +397,7 @@ internal sealed record Options(
         // Left alone by default: K9001 written through the property store snaps back within a
         // second (see notes/), so forcing it off would only pretend to.
         bool? ns = null;
-        bool raw = true, manual = false;
+        bool raw = true, manual = false, root = false;
         var output = Path.Combine("spike", $"probe-{DateTime.Now:yyyyMMdd-HHmmss}");
 
         for (var i = 0; i < args.Length; i++)
@@ -398,6 +415,7 @@ internal sealed record Options(
                     case "--ns": ns = Next() switch { "on" => true, "off" => false, "keep" => null, var v => throw new ArgumentException(v) }; break;
                     case "--no-raw": raw = false; break;
                     case "--manual": manual = true; break;
+                    case "--root": root = true; break;
                     case "--out": output = Next(); break;
                     default: return null;
                 }
@@ -408,7 +426,7 @@ internal sealed record Options(
             }
         }
 
-        return new Options(positions, settings, configs, seconds, settle, ns, raw, manual, output);
+        return new Options(positions, settings, configs, seconds, settle, ns, raw, manual, root, output);
     }
 }
 
