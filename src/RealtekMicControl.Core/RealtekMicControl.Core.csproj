@@ -12,6 +12,8 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="RealtekMicControl.Core.Tests" />
+    <!-- The acoustic test bench reuses the Core Audio declarations to open a capture stream. -->
+    <InternalsVisibleTo Include="MicProbe" />
   </ItemGroup>
 
 </Project>

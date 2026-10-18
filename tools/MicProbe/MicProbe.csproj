@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- Acoustic test bench, not shipped: switches the Fortemedia modes through Core and records
+         the processed microphone stream for each, to see what the modes actually do. -->
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RootNamespace>MicProbe</RootNamespace>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\RealtekMicControl.Core\RealtekMicControl.Core.csproj" />
+  </ItemGroup>
+
+</Project>
