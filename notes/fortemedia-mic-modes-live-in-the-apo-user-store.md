@@ -41,5 +41,10 @@ was read (`VT_UI4`); another type would be serialized as a blob instead of the `
 driver reads. See `src/RealtekMicControl.Core/ApoUserPropertyStore.cs`.
 
 Verified: every change made with `micmode` lands in the registry as `REG_DWORD` with only the
-intended bits changed, no elevation. **Still to verify acoustically:** that `FMService64` applies a
-change live, without a restart of the audio stream.
+intended bits changed, no elevation, and Armoury Crate writes exactly the same K2/K7 for the same
+choice. K2 and K7 stay put; **K9001 does not** -- written this way it is back to `0x10000000` within
+about a second, closed Realtek Audio Console or not, so it is state `FMService64` owns rather than a
+setting (Armoury Crate presumably switches it over its RPC client).
+
+What the modes do to the sound -- as far as could be measured, nothing -- is in
+[mic-modes-show-no-measurable-effect.md](mic-modes-show-no-measurable-effect.md).
