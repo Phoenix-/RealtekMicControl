@@ -4,9 +4,10 @@ using RealtekMicControl.Core.Interop;
 
 namespace MicProbe;
 
+/// <summary>IAudioClient followed by the IAudioClient2 additions, declared flat in vtable order.</summary>
 [GeneratedComInterface]
-[Guid("1CB9AD4C-DBFA-4C32-B178-C2F568A703B2")]
-internal partial interface IAudioClient
+[Guid("726778CD-F60A-4EDA-82DE-E47610CD78AA")]
+internal partial interface IAudioClient2
 {
     [PreserveSig] int Initialize(int shareMode, uint streamFlags, long bufferDuration, long periodicity, nint format, nint sessionGuid);
     [PreserveSig] int GetBufferSize(out uint frames);
@@ -20,6 +21,17 @@ internal partial interface IAudioClient
     [PreserveSig] int Reset();
     [PreserveSig] int SetEventHandle(nint handle);
     [PreserveSig] int GetService(in Guid iid, out nint service);
+    [PreserveSig] int IsOffloadCapable(int category, out int offloadCapable);
+    [PreserveSig] int SetClientProperties(in AudioClientProperties properties);
+}
+
+[StructLayout(LayoutKind.Sequential)]
+internal struct AudioClientProperties
+{
+    public uint Size;
+    public int IsOffload;
+    public int Category;
+    public uint Options;
 }
 
 [GeneratedComInterface]
@@ -50,21 +62,39 @@ internal partial interface IAudioEndpointVolume
     [PreserveSig] int GetMute(out int mute);
 }
 
+/// <summary>Samples collected for one take, one array per channel.</summary>
+internal sealed class Recording(int channels, int wanted)
+{
+    public float[][] Channels { get; } = Enumerable.Range(0, channels).Select(_ => new float[wanted]).ToArray();
+
+    public int Have { get; set; }
+
+    public int Wanted { get; } = wanted;
+
+    public bool Done => Have >= Wanted;
+}
+
 /// <summary>
-/// A shared-mode WASAPI capture stream in the endpoint's mix format. Shared mode with no special
-/// category means the DEFAULT processing mode, so the samples have been through the endpoint's
-/// mode effects -- the Fortemedia APO among them -- exactly as an ordinary app would get them.
+/// A shared-mode WASAPI capture stream in the endpoint's mix format, either processed or raw.
 /// </summary>
+/// <remarks>
+/// Processed: no stream options and no category, i.e. the DEFAULT processing mode, so the samples
+/// have been through the endpoint's mode effects -- the Fortemedia APO among them -- exactly as an
+/// ordinary app gets them. Raw: <c>AUDCLNT_STREAMOPTIONS_RAW</c>, which bypasses every APO; opened
+/// alongside the processed stream it is the reference that makes takes comparable even when the
+/// source is not steady.
+/// </remarks>
 internal sealed unsafe class CaptureStream : IDisposable
 {
-    private static readonly Guid IID_IAudioClient = new("1CB9AD4C-DBFA-4C32-B178-C2F568A703B2");
+    private static readonly Guid IID_IAudioClient2 = new("726778CD-F60A-4EDA-82DE-E47610CD78AA");
     private static readonly Guid IID_IAudioCaptureClient = new("C8ADBD64-E71E-48A0-A4DE-185C395CD317");
     private static readonly Guid SubtypeFloat = new("00000003-0000-0010-8000-00AA00389B71");
 
     private const int SharedMode = 0;
     private const uint SilentFlag = 0x2;
+    private const uint StreamOptionRaw = 0x1;
 
-    private readonly IAudioClient _client;
+    private readonly IAudioClient2 _client;
     private readonly IAudioCaptureClient _capture;
     private readonly bool _isFloat;
     private readonly int _bitsPerSample;
@@ -74,12 +104,15 @@ internal sealed unsafe class CaptureStream : IDisposable
 
     public int SampleRate { get; }
 
-    public string FormatDescription => $"{SampleRate} Hz, {Channels} ch, {_bitsPerSample}-bit {(_isFloat ? "float" : "PCM")}";
+    public bool IsRaw { get; }
 
-    private CaptureStream(IAudioClient client, IAudioCaptureClient capture, int channels, int sampleRate, bool isFloat, int bits, int blockAlign)
+    public string FormatDescription => $"{SampleRate} Hz, {Channels} ch, {_bitsPerSample}-bit {(_isFloat ? "float" : "PCM")}{(IsRaw ? ", raw" : string.Empty)}";
+
+    private CaptureStream(IAudioClient2 client, IAudioCaptureClient capture, bool raw, int channels, int sampleRate, bool isFloat, int bits, int blockAlign)
     {
         _client = client;
         _capture = capture;
+        IsRaw = raw;
         Channels = channels;
         SampleRate = sampleRate;
         _isFloat = isFloat;
@@ -87,13 +120,28 @@ internal sealed unsafe class CaptureStream : IDisposable
         _blockAlign = blockAlign;
     }
 
-    public static CaptureStream Open(string endpointId)
+    /// <summary>AUDIO_STREAM_CATEGORY: Other selects the DEFAULT processing mode, Communications the SPEECH mode a call app gets.</summary>
+    public const int CategoryOther = 0;
+    public const int CategoryCommunications = 3;
+
+    public static CaptureStream Open(string endpointId, bool raw = false, int category = CategoryOther)
     {
         ComInterop.EnsureInitialized();
         var enumerator = ComInterop.CreateDeviceEnumerator();
         NativeMethods.ThrowOnFailure(enumerator.GetDevice(endpointId, out var device), "GetDevice");
-        NativeMethods.ThrowOnFailure(device!.Activate(IID_IAudioClient, NativeMethods.CLSCTX_ALL, 0, out var clientPtr), "Activate(IAudioClient)");
-        var client = Wrap<IAudioClient>(clientPtr);
+        NativeMethods.ThrowOnFailure(device!.Activate(IID_IAudioClient2, NativeMethods.CLSCTX_ALL, 0, out var clientPtr), "Activate(IAudioClient2)");
+        var client = Wrap<IAudioClient2>(clientPtr);
+
+        if (raw || category != CategoryOther)
+        {
+            var properties = new AudioClientProperties
+            {
+                Size = (uint)sizeof(AudioClientProperties),
+                Category = category,
+                Options = raw ? StreamOptionRaw : 0,
+            };
+            NativeMethods.ThrowOnFailure(client.SetClientProperties(properties), "SetClientProperties");
+        }
 
         NativeMethods.ThrowOnFailure(client.GetMixFormat(out var format), "GetMixFormat");
         try
@@ -110,7 +158,7 @@ internal sealed unsafe class CaptureStream : IDisposable
             NativeMethods.ThrowOnFailure(client.GetService(IID_IAudioCaptureClient, out var capturePtr), "GetService(IAudioCaptureClient)");
             var capture = Wrap<IAudioCaptureClient>(capturePtr);
             NativeMethods.ThrowOnFailure(client.Start(), "IAudioClient.Start");
-            return new CaptureStream(client, capture, channels, sampleRate, isFloat, bits, blockAlign);
+            return new CaptureStream(client, capture, raw, channels, sampleRate, isFloat, bits, blockAlign);
         }
         finally
         {
@@ -144,39 +192,46 @@ internal sealed unsafe class CaptureStream : IDisposable
         }
     }
 
-    /// <summary>Captures <paramref name="duration"/> of audio, one array per channel.</summary>
-    public float[][] Record(TimeSpan duration)
-    {
-        var wanted = (int)(duration.TotalSeconds * SampleRate);
-        var channels = Enumerable.Range(0, Channels).Select(_ => new float[wanted]).ToArray();
-        var have = 0;
+    public Recording NewRecording(TimeSpan duration) => new(Channels, (int)(duration.TotalSeconds * SampleRate));
 
-        while (have < wanted)
+    /// <summary>
+    /// Moves every packet that has arrived into <paramref name="recording"/>; once it is full the
+    /// rest is drained and dropped, so a stream that finishes first does not fall behind.
+    /// </summary>
+    public void Pump(Recording recording)
+    {
+        while (_capture.GetNextPacketSize(out var packet) >= 0 && packet > 0)
+        {
+            NativeMethods.ThrowOnFailure(_capture.GetBuffer(out var data, out var frames, out var flags, out _, out _), "GetBuffer");
+            var take = (int)Math.Min(frames, (uint)Math.Max(0, recording.Wanted - recording.Have));
+            for (var f = 0; f < take; f++)
+            {
+                var frame = (byte*)data + (f * _blockAlign);
+                for (var c = 0; c < Channels; c++)
+                {
+                    recording.Channels[c][recording.Have + f] = (flags & SilentFlag) != 0 ? 0f : ReadSample(frame, c);
+                }
+            }
+
+            recording.Have += take;
+            _capture.ReleaseBuffer(frames);
+        }
+    }
+
+    /// <summary>Records the same stretch of time from several streams at once.</summary>
+    public static float[][][] Record(TimeSpan duration, params CaptureStream[] streams)
+    {
+        var recordings = streams.Select(s => s.NewRecording(duration)).ToArray();
+        while (recordings.Any(r => !r.Done))
         {
             Thread.Sleep(5);
-            while (_capture.GetNextPacketSize(out var packet) >= 0 && packet > 0)
+            for (var i = 0; i < streams.Length; i++)
             {
-                NativeMethods.ThrowOnFailure(_capture.GetBuffer(out var data, out var frames, out var flags, out _, out _), "GetBuffer");
-                var take = (int)Math.Min(frames, (uint)(wanted - have));
-                for (var f = 0; f < take; f++)
-                {
-                    var frame = (byte*)data + (f * _blockAlign);
-                    for (var c = 0; c < Channels; c++)
-                    {
-                        channels[c][have + f] = (flags & SilentFlag) != 0 ? 0f : ReadSample(frame, c);
-                    }
-                }
-
-                have += take;
-                _capture.ReleaseBuffer(frames);
-                if (have >= wanted)
-                {
-                    break;
-                }
+                streams[i].Pump(recordings[i]);
             }
         }
 
-        return channels;
+        return recordings.Select(r => r.Channels).ToArray();
     }
 
     private float ReadSample(byte* frame, int channel)
