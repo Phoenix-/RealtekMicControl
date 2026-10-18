@@ -1,0 +1,9 @@
+* text=auto
+
+*.sln text eol=crlf
+*.slnx text eol=crlf
+*.csproj text eol=crlf
+
+# Icon artwork: never let text=auto guess at these.
+*.png binary
+*.ico binary

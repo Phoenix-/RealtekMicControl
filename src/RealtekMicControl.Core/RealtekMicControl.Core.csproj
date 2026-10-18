@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- UI-agnostic: Core Audio COM and nothing else, so both the console CLI and the WinUI app
+         sit on it and the logic stays testable without a sound card. -->
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RootNamespace>RealtekMicControl.Core</RootNamespace>
+    <IsAotCompatible>true</IsAotCompatible>
+    <!-- [LibraryImport] and [GeneratedComInterface] emit unsafe marshalling stubs (SYSLIB1062). -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="RealtekMicControl.Core.Tests" />
+  </ItemGroup>
+
+</Project>

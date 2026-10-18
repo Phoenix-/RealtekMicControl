@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/RealtekMicControl.Cli/RealtekMicControl.Cli.csproj" />
+    <Project Path="src/RealtekMicControl.Core/RealtekMicControl.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/RealtekMicControl.Core.Tests/RealtekMicControl.Core.Tests.csproj" />
+  </Folder>
+</Solution>

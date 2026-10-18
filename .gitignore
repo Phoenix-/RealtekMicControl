@@ -1,0 +1,9 @@
+bin/
+obj/
+.vs/
+*.user
+publish/
+dist/
+
+# Throwaway experiments (the first PowerShell prototype lives here); findings go to notes/.
+spike/

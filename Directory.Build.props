@@ -1,0 +1,33 @@
+<Project>
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <NeutralLanguage>en-US</NeutralLanguage>
+    <Product>RealtekMicControl</Product>
+    <Authors>Mikhail Kazakov</Authors>
+    <Copyright>Copyright (c) 2026 Mikhail Kazakov</Copyright>
+    <RepositoryUrl>https://github.com/Phoenix-/RealtekMicControl</RepositoryUrl>
+  </PropertyGroup>
+
+  <!-- Versioning: the git tag is the version of record. A release build gets -p:Version=1.2.3
+       from the tag, which overrides both properties below. Anything else calls itself the line
+       being worked on, suffixed -dev, so an exe someone was handed can never pass for a release.
+       CI stamps the commit on top of it with -p:SourceRevisionId, giving 0.1.0-dev+sha. -->
+  <PropertyGroup>
+    <VersionPrefix>0.1.0</VersionPrefix>
+    <VersionSuffix Condition="'$(VersionSuffix)' == ''">dev</VersionSuffix>
+  </PropertyGroup>
+
+  <!-- The SDK appends all 40 characters of the commit to the informational version. Seven is what
+       a person quotes and what fits a title bar, so it is cut back after source control has spoken
+       and before the version is assembled. PadRight keeps a shorter id from throwing. -->
+  <Target Name="ShortenSourceRevisionId"
+          AfterTargets="InitializeSourceControlInformation"
+          BeforeTargets="AddSourceRevisionToInformationalVersion">
+    <PropertyGroup>
+      <SourceRevisionId Condition="'$(SourceRevisionId)' != ''">$(SourceRevisionId.PadRight(7).Substring(0, 7).Trim())</SourceRevisionId>
+    </PropertyGroup>
+  </Target>
+</Project>

@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- A plain console exe, separate from the WinUI app on purpose: a GUI-subsystem exe is not
+         waited for by cmd/PowerShell and has no usable exit code there, and scripting this should
+         not load the Windows App SDK. -->
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RootNamespace>RealtekMicControl.Cli</RootNamespace>
+    <AssemblyName>micmode</AssemblyName>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+
+    <!-- Native AOT: starts in milliseconds and needs no runtime installed. -->
+    <PublishAot>true</PublishAot>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <OptimizationPreference>Size</OptimizationPreference>
+    <UseSystemResourceKeys>true</UseSystemResourceKeys>
+    <DebugType>none</DebugType>
+    <CopyOutputSymbolsToPublishDirectory>false</CopyOutputSymbolsToPublishDirectory>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\RealtekMicControl.Core\RealtekMicControl.Core.csproj" />
+  </ItemGroup>
+
+  <!-- Referenced projects still bring their .pdb into the publish folder; the AOT exe never
+       loads it. -->
+  <Target Name="DropReferencedSymbols" AfterTargets="Publish">
+    <Delete Files="$([System.IO.Directory]::GetFiles('$(PublishDir)', '*.pdb'))" />
+  </Target>
+
+</Project>
