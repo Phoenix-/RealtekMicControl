@@ -1,0 +1,51 @@
+name: Release
+
+# Pushing a tag like v0.1.0 builds micmode.exe with that version and publishes a GitHub release.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-2025
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Put vswhere on PATH
+        shell: pwsh
+        run: Add-Content $env:GITHUB_PATH 'C:\Program Files (x86)\Microsoft Visual Studio\Installer'
+
+      - name: Version from the tag
+        id: version
+        shell: pwsh
+        run: |
+          $version = '${{ github.ref_name }}'.TrimStart('v')
+          if ($version -notmatch '^\d+\.\d+\.\d+$') { throw "Tag '${{ github.ref_name }}' is not vX.Y.Z" }
+          "value=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Test
+        run: dotnet test tests/RealtekMicControl.Core.Tests -c Release
+
+      - name: Publish micmode (Native AOT)
+        run: dotnet publish src/RealtekMicControl.Cli -c Release -o publish -p:Version=${{ steps.version.outputs.value }}
+
+      - name: Package
+        shell: pwsh
+        run: |
+          $zip = "micmode-${{ steps.version.outputs.value }}-win-x64.zip"
+          Compress-Archive -Path publish/micmode.exe, README.md, LICENSE -DestinationPath $zip
+          "ZIP=$zip" >> $env:GITHUB_ENV
+
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create ${{ github.ref_name }} ${{ env.ZIP }} --title "micmode ${{ steps.version.outputs.value }}" --notes "Native AOT build of micmode for Windows x64. See the README for what the Fortemedia microphone modes are and what the measurements found."

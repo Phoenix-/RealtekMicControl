@@ -59,8 +59,20 @@ Followed up on the suspicion that the ASUS / Realtek / Fortemedia stack simply n
 
 Where exactly the chain breaks was not found; the leading suspect remains the APO not finding the
 Fortemedia interface it expects from the Realtek driver (6.0.9123.1, February 2021 -- the newest
-ASUS ships for this model). The APO has a debug log (`C:\FMSAM\dbglog_%p.log`, gated by a
-`DebugMode` / `DebugFunction` switch whose location was not found); that is the next lever.
+ASUS ships for this model).
+
+The APO has a debug path (`C:\FMSAM\dbglog_%p.log`, dumps under `C:\FMSAMzj42u6\`) and its strings
+put `TraceFlag` right next to `SOFTWARE\Fortemedia` and "FMAPO: Debug function is disable".
+Setting `HKLM\SOFTWARE\Fortemedia\TraceFlag`, `DebugMode` and `DebugFunction` (to 1 and to
+0xFFFFFFFF), restarting the audio engine and opening streams produced neither files nor a single
+line of session-0 debug output from `audiodg` -- so the switch lives somewhere else, and finding it
+means disassembling `FMAPO64.dll`. That is where this was left.
+
+Everything above was rolled back afterwards: the components are on the Windows Update set again
+(APO 5906, service 0.1.1.81), the trace values are gone, root K7 is back to `0x890004`. Switching a
+component's driver for an experiment like this is one call to `UpdateDriverForPlugAndPlayDevices`
+with `INSTALLFLAG_FORCE` and the INF in the driver store; switching back is the same call with the
+other INF.
 
 ## Caveats
 

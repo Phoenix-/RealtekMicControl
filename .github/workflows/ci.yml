@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# A newer push to the same branch makes the running build irrelevant.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-2025
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      # ILCompiler shells out to vswhere by bare name to find the MSVC toolchain, and blames
+      # link.exe when it is missing.
+      - name: Put vswhere on PATH
+        shell: pwsh
+        run: Add-Content $env:GITHUB_PATH 'C:\Program Files (x86)\Microsoft Visual Studio\Installer'
+
+      - name: Build
+        run: dotnet build RealtekMicControl.slnx -c Release
+
+      - name: Test
+        run: dotnet test tests/RealtekMicControl.Core.Tests -c Release --no-build
+
+      # The AOT link is the fragile part and only runs on publish, so publish on every push.
+      - name: Publish micmode (Native AOT)
+        run: dotnet publish src/RealtekMicControl.Cli -c Release -o "${{ github.workspace }}\publish" -p:SourceRevisionId=${{ github.sha }}
+
+      - name: Check the published exe
+        shell: pwsh
+        run: |
+          $exe = "${{ github.workspace }}\publish\micmode.exe"
+          if (-not (Test-Path $exe)) { throw 'micmode.exe is missing' }
+          & $exe --version
+          # No Fortemedia microphone on a CI runner (possibly no audio service either): the tool
+          # must report it -- exit 2, or 3 if Core Audio itself refuses -- and not crash.
+          & $exe status
+          if ($LASTEXITCODE -notin 2, 3) { throw "expected exit code 2 or 3 on a machine without a Fortemedia microphone, got $LASTEXITCODE" }
+          $global:LASTEXITCODE = 0
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: micmode-win-x64-${{ github.sha }}
+          path: publish/
+          retention-days: 14
