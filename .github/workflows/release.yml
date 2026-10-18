@@ -1,6 +1,7 @@
 name: Release
 
-# Pushing a tag like v0.1.0 builds micmode.exe with that version and publishes a GitHub release.
+# Pushing a tag like v0.2.0 builds the app and micmode with that version and publishes a GitHub
+# release with one zip holding both.
 on:
   push:
     tags: ['v*']
@@ -11,7 +12,7 @@ permissions:
 jobs:
   release:
     runs-on: windows-2025
-    timeout-minutes: 20
+    timeout-minutes: 30
 
     steps:
       - uses: actions/checkout@v7
@@ -35,19 +36,29 @@ jobs:
       - name: Test
         run: dotnet test tests/RealtekMicControl.Core.Tests -c Release
 
+      # The app first: its payload trim runs after its own publish and would take micmode's
+      # leftovers with it otherwise.
+      - name: Publish the app (Native AOT)
+        run: dotnet publish src/RealtekMicControl.App -c Release -o publish -p:Version=${{ steps.version.outputs.value }}
+
       - name: Publish micmode (Native AOT)
         run: dotnet publish src/RealtekMicControl.Cli -c Release -o publish -p:Version=${{ steps.version.outputs.value }}
 
       - name: Package
         shell: pwsh
         run: |
-          $zip = "micmode-${{ steps.version.outputs.value }}-win-x64.zip"
-          Compress-Archive -Path publish/micmode.exe, README.md, LICENSE -DestinationPath $zip
+          foreach ($exe in 'RealtekMicControl.exe', 'micmode.exe') {
+            if (-not (Test-Path "publish/$exe")) { throw "$exe is missing" }
+          }
+          Copy-Item README.md, LICENSE publish/
+          $zip = "RealtekMicControl-${{ steps.version.outputs.value }}-win-x64.zip"
+          Compress-Archive -Path publish/* -DestinationPath $zip
           "ZIP=$zip" >> $env:GITHUB_ENV
+          Write-Host "$zip -- $([math]::Round((Get-Item $zip).Length / 1MB, 1)) MB"
 
       - name: Create the release
         env:
           GH_TOKEN: ${{ github.token }}
         # A block scalar: the notes contain ": ", which a plain YAML scalar cannot.
         run: |
-          gh release create ${{ github.ref_name }} ${{ env.ZIP }} --title "micmode ${{ steps.version.outputs.value }}" --notes "Native AOT build of micmode for Windows x64, no .NET runtime needed. Quick start: set the internal microphone's Audio enhancements to Device default effects, run 'micmode fix' in a terminal opened as administrator, then 'micmode cardioid'. The README explains why the Fortemedia microphone modes did nothing before."
+          gh release create ${{ github.ref_name }} ${{ env.ZIP }} --title "Realtek Mic Control ${{ steps.version.outputs.value }}" --notes "Native AOT builds for Windows x64, no .NET runtime needed: RealtekMicControl.exe (the window) and micmode.exe (the command line), unzip anywhere. Quick start: set the internal microphone's Audio enhancements to Device default effects, open RealtekMicControl.exe and press Fix if it asks, then pick Cardioid. The README explains why the Fortemedia microphone modes did nothing before."

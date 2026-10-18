@@ -1,5 +1,8 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/RealtekMicControl.App/RealtekMicControl.App.csproj">
+      <Platform Project="x64" />
+    </Project>
     <Project Path="src/RealtekMicControl.Cli/RealtekMicControl.Cli.csproj" />
     <Project Path="src/RealtekMicControl.Core/RealtekMicControl.Core.csproj" />
   </Folder>

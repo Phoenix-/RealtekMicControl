@@ -1,0 +1,69 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.22621.0</TargetPlatformMinVersion>
+    <RootNamespace>RealtekMicControl.App</RootNamespace>
+    <AssemblyName>RealtekMicControl</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>
+    <Platforms>x64</Platforms>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <UseWinUI>true</UseWinUI>
+    <WinUISDKReferences>false</WinUISDKReferences>
+    <!-- Required by [LibraryImport]'s generated marshalling code (SYSLIB1062). -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+
+    <!-- Unpackaged, Windows App SDK shipped next to the exe. EnableMsixTooling must stay true even
+         here: it drives PRI generation, and without the PRI the published exe dies at startup with
+         0xC000027B (a trap paid for in ForceAutoHDR.Net, which this project's setup comes from). -->
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <SelfContained>true</SelfContained>
+    <EnableMsixTooling>true</EnableMsixTooling>
+
+    <!-- Native AOT -->
+    <PublishAot>true</PublishAot>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <CsWinRTAotWarningLevel>2</CsWinRTAotWarningLevel>
+    <DebugType>none</DebugType>
+    <CopyOutputSymbolsToPublishDirectory>false</CopyOutputSymbolsToPublishDirectory>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Manifest Include="$(ApplicationManifest)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\RealtekMicControl.Core\RealtekMicControl.Core.csproj" />
+  </ItemGroup>
+
+  <!-- Component packages instead of the Microsoft.WindowsAppSDK meta-package: no AI/ML, Search,
+       Widgets or DWrite in the self-contained payload. -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2705" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.Runtime" Version="2.4.0" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.WinUI" Version="2.3.6" />
+  </ItemGroup>
+
+  <!-- Post-publish trim of the Windows App SDK payload, the deny-list ForceAutoHDR.Net arrived at
+       by bisection: anything not listed stays. Microsoft.ui.xaml.resources.common.dll must stay
+       (resource dictionaries of the standard controls), as must Microsoft.UI.Xaml.Internal.dll,
+       Microsoft.ui.xaml.resources.19h1.dll and the .pri files. -->
+  <Target Name="TrimWindowsAppSdkPayload" AfterTargets="Publish" Condition="'$(SkipPayloadTrim)' != 'true'">
+    <ItemGroup>
+      <_TrimFiles Include="$(PublishDir)*.winmd;$(PublishDir)*.json;$(PublishDir)*.pdb" />
+      <_TrimFiles Include="$(PublishDir)onnxruntime.dll;$(PublishDir)DirectML.dll;$(PublishDir)NPUDetect.dll;$(PublishDir)PerceptiveStreaming.dll" />
+      <_TrimFiles Include="$(PublishDir)Microsoft.Windows.AI.*.dll;$(PublishDir)Microsoft.Windows.Search.dll;$(PublishDir)Microsoft.Windows.Widgets.dll;$(PublishDir)Microsoft.Windows.Workloads*.dll;$(PublishDir)Microsoft.Windows.Workloads.pri" />
+      <_TrimFiles Include="$(PublishDir)Microsoft.Web.WebView2.Core.dll;$(PublishDir)WebView2Loader.dll;$(PublishDir)WinUIEdit.dll;$(PublishDir)DWriteCore.dll;$(PublishDir)DwmSceneI.dll" />
+      <_TrimFiles Include="$(PublishDir)Microsoft.WindowsAppRuntime.Bootstrap.dll;$(PublishDir)RestartAgent.exe;$(PublishDir)*.ProxyStub.dll;$(PublishDir)SessionHandleIPCProxyStub.dll;$(PublishDir)Microsoft.Windows.ApplicationModel.Background.UniversalBGTask.dll" />
+      <_TrimFiles Include="$(PublishDir)Microsoft.UI.Designer.dll" />
+      <_TrimDirs Include="$([System.IO.Directory]::GetDirectories('$(PublishDir)'))" Exclude="$(PublishDir)en-us" />
+    </ItemGroup>
+    <Delete Files="@(_TrimFiles)" />
+    <RemoveDir Directories="@(_TrimDirs)" />
+    <Message Importance="high" Text="TrimWindowsAppSdkPayload: removed @(_TrimFiles->Count()) files, @(_TrimDirs->Count()) dirs" />
+  </Target>
+
+</Project>

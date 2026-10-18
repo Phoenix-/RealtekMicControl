@@ -62,6 +62,16 @@ public sealed class ForteMicrophone
 
     public ForteState SetNoiseSuppression(bool enabled) => Update(state => state.WithNoiseSuppression(enabled));
 
+    /// <summary>
+    /// Calls <paramref name="changed"/> on a worker thread when the settings or the mode-effect
+    /// list may have changed -- Armoury Crate, the Fortemedia service or a driver writing them.
+    /// </summary>
+    public RegistryWatcher Watch(Action changed)
+    {
+        var fxProperties = RegistryEffectChainStore.FxPropertiesPathOf(Id);
+        return new RegistryWatcher([fxProperties, $@"{fxProperties}\{ForteProperties.CaptureApoClsid:B}\User"], changed);
+    }
+
     /// <summary>Whether Windows actually runs the Fortemedia engine the settings above configure.</summary>
     public EffectChainState ReadEffectChain() => ModeEffectChain.Classify(_effectChain.ReadChain());
 

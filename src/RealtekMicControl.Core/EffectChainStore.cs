@@ -31,11 +31,16 @@ internal sealed class RegistryEffectChainStore(string endpointId) : IEffectChain
 
     private const string BackupKey = @"SOFTWARE\RealtekMicControl\DriverModeEffectOrder";
 
-    /// <summary>The endpoint id is <c>{0.0.1.00000000}.{guid}</c>; the registry key is the guid.</summary>
-    private readonly string _endpointKey = endpointId[(endpointId.LastIndexOf('.') + 1)..];
+    private readonly string _endpointKey = EndpointKey(endpointId);
 
-    private string FxPropertiesPath =>
-        $@"SOFTWARE\Microsoft\Windows\CurrentVersion\MMDevices\Audio\Capture\{_endpointKey}\FxProperties";
+    private string FxPropertiesPath => FxPropertiesPathOf(endpointId);
+
+    /// <summary>The endpoint id is <c>{0.0.1.00000000}.{guid}</c>; the registry key is the guid.</summary>
+    private static string EndpointKey(string endpointId) => endpointId[(endpointId.LastIndexOf('.') + 1)..];
+
+    /// <summary>The endpoint's <c>FxProperties</c> key under <c>HKLM</c>.</summary>
+    public static string FxPropertiesPathOf(string endpointId) =>
+        $@"SOFTWARE\Microsoft\Windows\CurrentVersion\MMDevices\Audio\Capture\{EndpointKey(endpointId)}\FxProperties";
 
     public string[]? ReadChain()
     {

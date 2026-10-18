@@ -16,7 +16,7 @@
        being worked on, suffixed -dev, so an exe someone was handed can never pass for a release.
        CI stamps the commit on top of it with -p:SourceRevisionId, giving 0.1.0-dev+sha. -->
   <PropertyGroup>
-    <VersionPrefix>0.1.0</VersionPrefix>
+    <VersionPrefix>0.2.0</VersionPrefix>
     <VersionSuffix Condition="'$(VersionSuffix)' == ''">dev</VersionSuffix>
   </PropertyGroup>
 

@@ -1,7 +1,6 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
-using System.Security.Principal;
 using System.Text.Json;
 using RealtekMicControl.Core;
 
@@ -118,7 +117,7 @@ internal static class Program
     /// </summary>
     private static int ChangeEffectChain(bool restore)
     {
-        if (!IsAdministrator())
+        if (!EffectChainRepair.IsAdministrator())
         {
             Console.Error.WriteLine($"micmode: '{(restore ? "unfix" : "fix")}' changes a machine-wide driver setting " +
                                     "and restarts Windows Audio; run it from a terminal opened as administrator.");
@@ -133,34 +132,17 @@ internal static class Program
                 return ReportNoMicrophone();
             }
 
-            var changed = false;
-            foreach (var mic in microphones)
-            {
-                string outcome;
-                if (restore)
+            var restarted = EffectChainRepair.Run(
+                microphones,
+                restore,
+                done: (mic, change) =>
                 {
-                    var restored = mic.RestoreEffectChain();
-                    changed |= restored;
-                    outcome = restored ? "driver order restored" : "nothing to restore";
-                }
-                else
-                {
-                    var before = mic.ReadEffectChain();
-                    var fixedNow = mic.FixEffectChain();
-                    changed |= fixedNow;
-                    outcome = fixedNow ? "fixed: Fortemedia moved to the end"
-                        : before == EffectChainState.Ok ? "already ok"
-                        : "unknown layout, left alone";
-                }
-
-                Console.WriteLine(mic.Name);
-                Console.WriteLine($"  {"effect chain:",-19}{outcome}");
-            }
-
-            if (changed)
+                    Console.WriteLine(mic.Name);
+                    Console.WriteLine($"  {"effect chain:",-19}{Describe(change)}");
+                },
+                restarting: () => Console.Write("Restarting Windows Audio... "));
+            if (restarted)
             {
-                Console.Write("Restarting Windows Audio... ");
-                AudioService.Restart();
                 Console.WriteLine("done.");
             }
 
@@ -184,11 +166,14 @@ internal static class Program
         e is COMException or InvalidOperationException or Win32Exception or UnauthorizedAccessException
             or System.Security.SecurityException or IOException;
 
-    private static bool IsAdministrator()
+    private static string Describe(EffectChainChange change) => change switch
     {
-        using var identity = WindowsIdentity.GetCurrent();
-        return new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator);
-    }
+        EffectChainChange.Fixed => "fixed: Fortemedia moved to the end",
+        EffectChainChange.AlreadyOk => "already ok",
+        EffectChainChange.Restored => "driver order restored",
+        EffectChainChange.NothingToRestore => "nothing to restore",
+        _ => "unknown layout, left alone",
+    };
 
     private static string Describe(MicSetting? setting) => setting switch
     {

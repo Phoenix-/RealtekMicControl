@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Window
+    x:Class="RealtekMicControl.App.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="Realtek Mic Control">
+    <Window.SystemBackdrop>
+        <MicaBackdrop />
+    </Window.SystemBackdrop>
+
+    <!-- The window is sized to this grid's desired height (MainWindow.FitToContent), so nothing
+         here may stretch vertically. -->
+    <Grid x:Name="Root" VerticalAlignment="Top">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- No IconSource: the window icon is read out of the exe (MainWindow.SetIconFromExecutable). -->
+        <TitleBar x:Name="AppTitleBar" Title="Realtek Mic Control" />
+
+        <StackPanel Grid.Row="1" Padding="16,4,16,12" Spacing="12">
+            <!-- Collapsed while closed (MainWindow.SetOpen), or the StackPanel's Spacing still
+                 reserves room for them. -->
+            <InfoBar
+                x:Name="ChainBar"
+                Title="Windows skips the Fortemedia effect"
+                IsClosable="False"
+                Message="The modes change nothing until this is fixed. Fixing restarts Windows Audio and asks for administrator rights."
+                Severity="Warning"
+                Visibility="Collapsed">
+                <InfoBar.ActionButton>
+                    <Button x:Name="FixButton" Click="OnFixClick" Content="Fix" />
+                </InfoBar.ActionButton>
+            </InfoBar>
+
+            <InfoBar
+                x:Name="ErrorBar"
+                Closed="OnErrorBarClosed"
+                IsClosable="True"
+                Severity="Error"
+                Visibility="Collapsed" />
+
+            <RadioButtons x:Name="ModeButtons" Header="Microphone mode" SelectionChanged="OnModeChanged">
+                <RadioButton AutomationProperties.Name="Off">
+                    <StackPanel>
+                        <TextBlock Text="Off" />
+                        <TextBlock Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="No beamforming" />
+                    </StackPanel>
+                </RadioButton>
+                <RadioButton AutomationProperties.Name="Cardioid">
+                    <StackPanel>
+                        <TextBlock Text="Cardioid" />
+                        <TextBlock Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="You in front; sound from behind the lid is cut" />
+                    </StackPanel>
+                </RadioButton>
+                <RadioButton AutomationProperties.Name="Stereo">
+                    <StackPanel>
+                        <TextBlock Text="Stereo" />
+                        <TextBlock Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="Left and right, louder" />
+                    </StackPanel>
+                </RadioButton>
+                <RadioButton AutomationProperties.Name="Omni">
+                    <StackPanel>
+                        <TextBlock Text="Omni" />
+                        <TextBlock Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="Everything around the laptop" />
+                    </StackPanel>
+                </RadioButton>
+            </RadioButtons>
+
+            <TextBlock
+                x:Name="ArmouryHint"
+                Style="{StaticResource CaptionTextBlockStyle}"
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                Text="Armoury Crate is running: at every boot it puts back the mode last chosen in it."
+                TextWrapping="Wrap"
+                Visibility="Collapsed" />
+
+            <Grid>
+                <TextBlock
+                    x:Name="MicrophoneName"
+                    VerticalAlignment="Center"
+                    Style="{StaticResource CaptionTextBlockStyle}"
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    TextTrimming="CharacterEllipsis" />
+                <Button
+                    HorizontalAlignment="Right"
+                    AutomationProperties.Name="Settings"
+                    ToolTipService.ToolTip="Settings">
+                    <FontIcon FontSize="14" Glyph="&#xE713;" />
+                    <Button.Flyout>
+                        <Flyout x:Name="SettingsFlyout" Placement="TopEdgeAlignedRight">
+                            <StackPanel MaxWidth="280" Spacing="8">
+                                <ToggleSwitch
+                                    x:Name="CloseOnFocusLossSwitch"
+                                    Header="Close the window when it loses focus"
+                                    Toggled="OnCloseOnFocusLossToggled" />
+                                <TextBlock
+                                    x:Name="ChainStatus"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Flyout>
+                    </Button.Flyout>
+                </Button>
+            </Grid>
+        </StackPanel>
+    </Grid>
+</Window>

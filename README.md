@@ -1,14 +1,16 @@
 # RealtekMicControl
 
 Why the "Microphone modes" of ASUS laptops (Fortemedia cardioid / stereo / omni beamforming) do
-nothing on Windows 11, a one-command fix, and a small tool to switch the modes without Armoury
-Crate. .NET 10, Native AOT.
+nothing on Windows 11, a one-click fix, and a small window and a command-line tool to switch the
+modes without Armoury Crate. .NET 10, WinUI 3, Native AOT.
 
 > **Status.** On the laptop this was built on — ASUS ROG Zephyrus G15 GA503QS, Realtek ALC289 with
 > the Fortemedia SAMSoft effects — the modes had never worked: Windows threw the Fortemedia effect
-> out of the microphone pipeline. `micmode fix` puts it back, and then the modes do what they say:
+> out of the microphone pipeline. The fix puts it back, and then the modes do what they say:
 > Cardioid puts **35 dB** between a sound in front of the laptop and the same sound behind the lid.
-> Other ASUS models with the same driver probably have the same problem; `micmode status` tells.
+> Other ASUS models with the same driver probably have the same problem; the app tells.
+
+![The Realtek Mic Control window](art/screenshot.png)
 
 ## Quick start
 
@@ -16,13 +18,26 @@ Crate. .NET 10, Native AOT.
    enhancements: Device default effects**. With *Microsoft Voice Clarity* selected, Windows uses its
    own processing instead of the laptop's and none of this applies; with *Off* there are no effects
    at all.
-2. In a terminal opened **as administrator**: `micmode fix`. Windows Audio restarts, so sound stops
-   for a few seconds.
-3. `micmode cardioid` (or `stereo` / `omni` / `off`); no administrator needed for that.
-4. `micmode status` should now say `effect chain: ok`.
+2. Unzip the [release](https://github.com/Phoenix-/RealtekMicControl/releases) anywhere and start
+   `RealtekMicControl.exe`. If it says *Windows skips the Fortemedia effect*, press **Fix** and
+   confirm the administrator prompt; Windows Audio restarts, so sound stops for a few seconds.
+3. Pick **Cardioid** (or another mode). The choice applies immediately, no administrator needed.
+
+The same from a terminal: `micmode fix` (as administrator), then `micmode cardioid`;
+`micmode status` should say `effect chain: ok`.
 
 The fix survives a reboot. `micmode unfix` puts the driver's order back. A driver reinstall does
-the same, and `status` will say `broken` again: run `micmode fix` once more.
+the same, and the app shows the warning again: press Fix once more.
+
+## The window
+
+`RealtekMicControl.exe` is a plain window, not a tray app: it starts in well under a second, so
+it does not need to sit in memory. It shows the stored mode and follows it live when something
+else (Armoury Crate, `micmode`) changes it; the gear holds one setting, *close the window when it
+loses focus*, for using it like a pop-up. The "intelligent noise suppression" switch is left out
+on purpose: the Fortemedia service rewrites that value twice a second, so a switch for it would do
+nothing. The folder also holds the Windows App SDK it runs on (about 30 files, 50 MB), so it needs
+nothing installed.
 
 ## Why the modes did nothing
 
@@ -123,8 +138,14 @@ numpy scripts for band levels.
 
 ```
 dotnet test tests/RealtekMicControl.Core.Tests
+dotnet publish src/RealtekMicControl.App -c Release -o publish/app
 dotnet publish src/RealtekMicControl.Cli -c Release -o publish/cli
 ```
+
+The app's setup (unpackaged WinUI 3, Windows App SDK component packages, a post-publish trim of
+its payload) comes from ForceAutoHDR.Net; the window-sizing traps it hit here are in
+[notes/winui3-window-fit-to-content.md](notes/winui3-window-fit-to-content.md). The icon is drawn
+by `art/make-appicon.py` (Pillow and numpy; `--check` verifies the committed `.ico`).
 
 The Native AOT link step needs the MSVC toolchain and `vswhere.exe` on `PATH`
 (`C:\Program Files (x86)\Microsoft Visual Studio\Installer`). Core Audio is declared with

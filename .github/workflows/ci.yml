@@ -52,8 +52,28 @@ jobs:
           if ($LASTEXITCODE -notin 2, 3) { throw "expected exit code 2 or 3 on a machine without a Fortemedia microphone, got $LASTEXITCODE" }
           $global:LASTEXITCODE = 0
 
+      # The app has no headless smoke test (a runner has no desktop session to show it on); this
+      # proves the AOT link and the payload trim, and keeps the result as an artifact.
+      - name: Publish the app (Native AOT)
+        run: dotnet publish src/RealtekMicControl.App -c Release -o "${{ github.workspace }}\publish-app" -p:SourceRevisionId=${{ github.sha }}
+
+      - name: Check the published app
+        shell: pwsh
+        run: |
+          $exe = "${{ github.workspace }}\publish-app\RealtekMicControl.exe"
+          if (-not (Test-Path $exe)) { throw 'RealtekMicControl.exe is missing' }
+          if (-not (Test-Path "${{ github.workspace }}\publish-app\RealtekMicControl.pri")) { throw 'RealtekMicControl.pri is missing: the app would die at startup' }
+          $files = Get-ChildItem "${{ github.workspace }}\publish-app" -Recurse -File
+          Write-Host "$($files.Count) files, $([math]::Round(($files | Measure-Object Length -Sum).Sum / 1MB, 1)) MB"
+
       - uses: actions/upload-artifact@v7
         with:
           name: micmode-win-x64-${{ github.sha }}
           path: publish/
+          retention-days: 14
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: app-win-x64-${{ github.sha }}
+          path: publish-app/
           retention-days: 14
