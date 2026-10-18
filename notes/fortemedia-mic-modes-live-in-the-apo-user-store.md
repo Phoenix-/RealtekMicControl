@@ -46,5 +46,6 @@ choice. K2 and K7 stay put; **K9001 does not** -- written this way it is back to
 about a second, closed Realtek Audio Console or not, so it is state `FMService64` owns rather than a
 setting (Armoury Crate presumably switches it over its RPC client).
 
-What the modes do to the sound -- as far as could be measured, nothing -- is in
-[mic-modes-show-no-measurable-effect.md](mic-modes-show-no-measurable-effect.md).
+Out of the box the modes do nothing to the sound, because Windows never puts `CFMAPOCAP` into the
+pipeline: [capture-mfx-dropped-when-aec-apo-is-not-last.md](capture-mfx-dropped-when-aec-apo-is-not-last.md).
+Once it does, they work as advertised.

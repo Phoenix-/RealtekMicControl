@@ -1,5 +1,12 @@
 # The microphone modes show no measurable effect on the GA503QS
 
+> **Superseded by the root cause.** These measurements stand, but they measured a pipeline in
+> which the Fortemedia engine never ran: first Windows' Voice Clarity had replaced the OEM capture
+> chain ([voice-clarity-replaces-the-oem-capture-chain.md](voice-clarity-replaces-the-oem-capture-chain.md)),
+> then AudioSrv kept dropping the mode-effect chain because the AEC APO was not last in it
+> ([capture-mfx-dropped-when-aec-apo-is-not-last.md](capture-mfx-dropped-when-aec-apo-is-not-last.md)).
+> With that fixed, Cardioid puts 35 dB between a source in front and one behind the lid.
+
 Measured 2026-10-18 with `tools/MicProbe` on an ASUS ROG Zephyrus G15 GA503QS (driver set as in
 [fortemedia-mic-modes-live-in-the-apo-user-store.md](fortemedia-mic-modes-live-in-the-apo-user-store.md)).
 
@@ -88,7 +95,10 @@ other INF.
 
 ## Consequence
 
-On this laptop the switch is, as far as a meter can tell, cosmetic. The tool still sets exactly what
-Armoury Crate sets, so it is a faithful replacement -- just not one that changes how you sound.
+As configured out of the box, the switch on this laptop was cosmetic: the engine it configures was
+never in the pipeline. The SPEECH-stream numbers above are Voice Clarity's processing; what made
+the DEFAULT-stream gate react to K7 was not pinned down. The disassembly and live debugging that found the
+real break are in
+[capture-mfx-dropped-when-aec-apo-is-not-last.md](capture-mfx-dropped-when-aec-apo-is-not-last.md).
 
 The analysis scripts used for the band tables are in `tools/MicProbe/analysis/` (numpy).
