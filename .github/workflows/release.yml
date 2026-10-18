@@ -48,4 +48,6 @@ jobs:
       - name: Create the release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create ${{ github.ref_name }} ${{ env.ZIP }} --title "micmode ${{ steps.version.outputs.value }}" --notes "Native AOT build of micmode for Windows x64, no .NET runtime needed. Quick start: set the internal microphone's Audio enhancements to Device default effects, run 'micmode fix' in a terminal opened as administrator, then 'micmode cardioid'. The README explains why the Fortemedia microphone modes did nothing before."
+        # A block scalar: the notes contain ": ", which a plain YAML scalar cannot.
+        run: |
+          gh release create ${{ github.ref_name }} ${{ env.ZIP }} --title "micmode ${{ steps.version.outputs.value }}" --notes "Native AOT build of micmode for Windows x64, no .NET runtime needed. Quick start: set the internal microphone's Audio enhancements to Device default effects, run 'micmode fix' in a terminal opened as administrator, then 'micmode cardioid'. The README explains why the Fortemedia microphone modes did nothing before."
