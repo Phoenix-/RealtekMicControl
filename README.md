@@ -31,10 +31,11 @@ the same, and the app shows the warning again: press Fix once more.
 
 ## The window
 
-`RealtekMicControl.exe` is a plain window, not a tray app: it starts in well under a second, so
-it does not need to sit in memory. It shows the stored mode and follows it live when something
-else (Armoury Crate, `micmode`) changes it; the gear holds one setting, *close the window when it
-loses focus*, for using it like a pop-up. The "intelligent noise suppression" switch is left out
+`RealtekMicControl.exe` is a small fixed window, not a tray app: it starts in well under a second,
+so it does not need to sit in memory. It shows the stored mode and follows it live when something
+else (Armoury Crate, `micmode`) changes it; hovering a mode says what it does. The gear next to
+the close button holds one setting, *close the window when it loses focus*, for using it like a
+pop-up, plus the microphone's name and the effect chain status. The "intelligent noise suppression" switch is left out
 on purpose: the Fortemedia service rewrites that value twice a second, so a switch for it would do
 nothing. The folder also holds the Windows App SDK it runs on (about 30 files, 50 MB), so it needs
 nothing installed.

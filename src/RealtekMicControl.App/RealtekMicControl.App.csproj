@@ -50,7 +50,10 @@
   <!-- Post-publish trim of the Windows App SDK payload, the deny-list ForceAutoHDR.Net arrived at
        by bisection: anything not listed stays. Microsoft.ui.xaml.resources.common.dll must stay
        (resource dictionaries of the standard controls), as must Microsoft.UI.Xaml.Internal.dll,
-       Microsoft.ui.xaml.resources.19h1.dll and the .pri files. -->
+       Microsoft.ui.xaml.resources.19h1.dll and the .pri files. So must
+       Microsoft.UI.Xaml\Assets\NoiseAsset_256x256_PNG.png, which ForceAutoHDR's hello-world
+       bisection let go: acrylic loads it, and without it the settings flyout's background
+       renders fully transparent. See notes/winui3-aot-traps-found-here.md. -->
   <Target Name="TrimWindowsAppSdkPayload" AfterTargets="Publish" Condition="'$(SkipPayloadTrim)' != 'true'">
     <ItemGroup>
       <_TrimFiles Include="$(PublishDir)*.winmd;$(PublishDir)*.json;$(PublishDir)*.pdb" />
@@ -58,8 +61,8 @@
       <_TrimFiles Include="$(PublishDir)Microsoft.Windows.AI.*.dll;$(PublishDir)Microsoft.Windows.Search.dll;$(PublishDir)Microsoft.Windows.Widgets.dll;$(PublishDir)Microsoft.Windows.Workloads*.dll;$(PublishDir)Microsoft.Windows.Workloads.pri" />
       <_TrimFiles Include="$(PublishDir)Microsoft.Web.WebView2.Core.dll;$(PublishDir)WebView2Loader.dll;$(PublishDir)WinUIEdit.dll;$(PublishDir)DWriteCore.dll;$(PublishDir)DwmSceneI.dll" />
       <_TrimFiles Include="$(PublishDir)Microsoft.WindowsAppRuntime.Bootstrap.dll;$(PublishDir)RestartAgent.exe;$(PublishDir)*.ProxyStub.dll;$(PublishDir)SessionHandleIPCProxyStub.dll;$(PublishDir)Microsoft.Windows.ApplicationModel.Background.UniversalBGTask.dll" />
-      <_TrimFiles Include="$(PublishDir)Microsoft.UI.Designer.dll" />
-      <_TrimDirs Include="$([System.IO.Directory]::GetDirectories('$(PublishDir)'))" Exclude="$(PublishDir)en-us" />
+      <_TrimFiles Include="$(PublishDir)Microsoft.UI.Designer.dll;$(PublishDir)Microsoft.UI.Xaml\Assets\map.html" />
+      <_TrimDirs Include="$([System.IO.Directory]::GetDirectories('$(PublishDir)'))" Exclude="$(PublishDir)en-us;$(PublishDir)Microsoft.UI.Xaml" />
     </ItemGroup>
     <Delete Files="@(_TrimFiles)" />
     <RemoveDir Directories="@(_TrimDirs)" />

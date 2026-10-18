@@ -16,10 +16,46 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!-- No IconSource: the window icon is read out of the exe (MainWindow.SetIconFromExecutable). -->
-        <TitleBar x:Name="AppTitleBar" Title="Realtek Mic Control" />
+        <!-- The caption: what the window is for and the build on the left, settings next to the
+             system's close button on the right (the TitleBar keeps the gear clickable instead of
+             a drag area). No IconSource: the window icon is read out of the exe
+             (MainWindow.SetIconFromExecutable); the taskbar still shows Window.Title. -->
+        <TitleBar x:Name="AppTitleBar" Title="Microphone mode">
+            <TitleBar.RightHeader>
+                <Button
+                    Width="40"
+                    Height="32"
+                    Padding="0"
+                    AutomationProperties.Name="Settings"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    ToolTipService.ToolTip="Settings">
+                    <FontIcon FontSize="14" Glyph="&#xE713;" />
+                    <Button.Flyout>
+                        <Flyout x:Name="SettingsFlyout" Placement="BottomEdgeAlignedRight">
+                            <StackPanel MaxWidth="280" Spacing="8">
+                                <ToggleSwitch
+                                    x:Name="CloseOnFocusLossSwitch"
+                                    Header="Close the window when it loses focus"
+                                    Toggled="OnCloseOnFocusLossToggled" />
+                                <TextBlock
+                                    x:Name="MicrophoneName"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    TextWrapping="Wrap" />
+                                <TextBlock
+                                    x:Name="ChainStatus"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Flyout>
+                    </Button.Flyout>
+                </Button>
+            </TitleBar.RightHeader>
+        </TitleBar>
 
-        <StackPanel Grid.Row="1" Padding="16,4,16,12" Spacing="12">
+        <StackPanel Grid.Row="1" Padding="16,4,16,16" Spacing="12">
             <!-- Collapsed while closed (MainWindow.SetOpen), or the StackPanel's Spacing still
                  reserves room for them. -->
             <InfoBar
@@ -42,123 +78,88 @@
                 Visibility="Collapsed" />
 
             <!-- The four modes as a segmented row of toggle buttons (MainWindow keeps exactly one
-                 checked). Icons: a 24 x 24 set seen from above the laptop, its front at the
-                 bottom; the sources are art/mode-icons/*.svg, the geometry is inlined because a
-                 PathIcon's Data cannot be shared through a resource without {Binding}, which
-                 NativeAOT does not support reliably. -->
-            <StackPanel Spacing="8">
-                <TextBlock Text="Microphone mode" />
-                <Grid x:Name="ModeButtons" ColumnSpacing="6">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition />
-                        <ColumnDefinition />
-                        <ColumnDefinition />
-                        <ColumnDefinition />
-                    </Grid.ColumnDefinitions>
-                    <ToggleButton
-                        x:Name="OffButton"
-                        Padding="4,8,4,6"
-                        HorizontalAlignment="Stretch"
-                        AutomationProperties.Name="Off"
-                        Click="OnModeClick"
-                        Tag="0">
-                        <StackPanel Spacing="4">
-                            <Viewbox Width="40" Height="40">
-                                <PathIcon Width="24" Height="24" Data="F0 M8,7 H16 A1.5,1.5 0 0 1 17.5,8.5 V13.5 A1.5,1.5 0 0 1 16,15 H8 A1.5,1.5 0 0 1 6.5,13.5 V8.5 A1.5,1.5 0 0 1 8,7 Z M8,8.5 V13.5 H16 V8.5 Z M10,10 H14 V11.25 H10 Z M6.5,16 H17.5 A0.75,0.75 0 0 1 17.5,17.5 H6.5 A0.75,0.75 0 0 1 6.5,16 Z" />
-                            </Viewbox>
-                            <TextBlock HorizontalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}" Text="Off" />
-                        </StackPanel>
-                    </ToggleButton>
-                    <ToggleButton
-                        x:Name="CardioidButton"
-                        Grid.Column="1"
-                        Padding="4,8,4,6"
-                        HorizontalAlignment="Stretch"
-                        AutomationProperties.Name="Cardioid"
-                        Click="OnModeClick"
-                        Tag="1">
-                        <StackPanel Spacing="4">
-                            <Viewbox Width="40" Height="40">
-                                <PathIcon Width="24" Height="24" Data="F0 M8,7 H16 A1.5,1.5 0 0 1 17.5,8.5 V13.5 A1.5,1.5 0 0 1 16,15 H8 A1.5,1.5 0 0 1 6.5,13.5 V8.5 A1.5,1.5 0 0 1 8,7 Z M8,8.5 V13.5 H16 V8.5 Z M10,10 H14 V11.25 H10 Z M6.5,16 H17.5 A0.75,0.75 0 0 1 17.5,17.5 H6.5 A0.75,0.75 0 0 1 6.5,16 Z M10.1,20.6 L12,18.7 L13.9,20.6 Z M20.0435,18.7493 A10.5,10.5 0 0 1 3.9565,18.7493 L4.9141,17.9458 A9.25,9.25 0 0 0 19.0859,17.9458 Z" />
-                            </Viewbox>
-                            <TextBlock HorizontalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}" Text="Cardioid" />
-                        </StackPanel>
-                    </ToggleButton>
-                    <ToggleButton
-                        x:Name="StereoButton"
-                        Grid.Column="2"
-                        Padding="4,8,4,6"
-                        HorizontalAlignment="Stretch"
-                        AutomationProperties.Name="Stereo"
-                        Click="OnModeClick"
-                        Tag="2">
-                        <StackPanel Spacing="4">
-                            <Viewbox Width="40" Height="40">
-                                <PathIcon Width="24" Height="24" Data="F0 M8,7 H16 A1.5,1.5 0 0 1 17.5,8.5 V13.5 A1.5,1.5 0 0 1 16,15 H8 A1.5,1.5 0 0 1 6.5,13.5 V8.5 A1.5,1.5 0 0 1 8,7 Z M8,8.5 V13.5 H16 V8.5 Z M10,10 H14 V11.25 H10 Z M6.5,16 H17.5 A0.75,0.75 0 0 1 17.5,17.5 H6.5 A0.75,0.75 0 0 1 6.5,16 Z M3.6,10.1 L5.5,12 L3.6,13.9 Z M20.4,10.1 L18.5,12 L20.4,13.9 Z M10.1,20.6 L12,18.7 L13.9,20.6 Z M18.7493,3.9565 A10.5,10.5 0 1 1 5.2507,3.9565 L6.0542,4.9141 A9.25,9.25 0 1 0 17.9458,4.9141 Z" />
-                            </Viewbox>
-                            <TextBlock HorizontalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}" Text="Stereo" />
-                        </StackPanel>
-                    </ToggleButton>
-                    <ToggleButton
-                        x:Name="OmniButton"
-                        Grid.Column="3"
-                        Padding="4,8,4,6"
-                        HorizontalAlignment="Stretch"
-                        AutomationProperties.Name="Omni"
-                        Click="OnModeClick"
-                        Tag="3">
-                        <StackPanel Spacing="4">
-                            <Viewbox Width="40" Height="40">
-                                <PathIcon Width="24" Height="24" Data="F0 M8,7 H16 A1.5,1.5 0 0 1 17.5,8.5 V13.5 A1.5,1.5 0 0 1 16,15 H8 A1.5,1.5 0 0 1 6.5,13.5 V8.5 A1.5,1.5 0 0 1 8,7 Z M8,8.5 V13.5 H16 V8.5 Z M10,10 H14 V11.25 H10 Z M6.5,16 H17.5 A0.75,0.75 0 0 1 17.5,17.5 H6.5 A0.75,0.75 0 0 1 6.5,16 Z M3.6,10.1 L5.5,12 L3.6,13.9 Z M20.4,10.1 L18.5,12 L20.4,13.9 Z M10.1,20.6 L12,18.7 L13.9,20.6 Z M10.1,3.6 L12,5.5 L13.9,3.6 Z M12,1.5 A10.5,10.5 0 1 1 12,22.5 A10.5,10.5 0 1 1 12,1.5 Z M12,2.75 A9.25,9.25 0 1 0 12,21.25 A9.25,9.25 0 1 0 12,2.75 Z" />
-                            </Viewbox>
-                            <TextBlock HorizontalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}" Text="Omni" />
-                        </StackPanel>
-                    </ToggleButton>
-                </Grid>
-                <TextBlock
-                    x:Name="ModeDescription"
-                    Style="{StaticResource CaptionTextBlockStyle}"
-                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                    TextWrapping="Wrap" />
-            </StackPanel>
-
-            <TextBlock
-                x:Name="ArmouryHint"
-                Style="{StaticResource CaptionTextBlockStyle}"
-                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                Text="Armoury Crate is running: at every boot it puts back the mode last chosen in it."
-                TextWrapping="Wrap"
-                Visibility="Collapsed" />
-
-            <Grid>
-                <TextBlock
-                    x:Name="MicrophoneName"
-                    VerticalAlignment="Center"
-                    Style="{StaticResource CaptionTextBlockStyle}"
-                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                    TextTrimming="CharacterEllipsis" />
-                <Button
-                    HorizontalAlignment="Right"
-                    AutomationProperties.Name="Settings"
-                    ToolTipService.ToolTip="Settings">
-                    <FontIcon FontSize="14" Glyph="&#xE713;" />
-                    <Button.Flyout>
-                        <Flyout x:Name="SettingsFlyout" Placement="TopEdgeAlignedRight">
-                            <StackPanel MaxWidth="280" Spacing="8">
-                                <ToggleSwitch
-                                    x:Name="CloseOnFocusLossSwitch"
-                                    Header="Close the window when it loses focus"
-                                    Toggled="OnCloseOnFocusLossToggled" />
-                                <TextBlock
-                                    x:Name="ChainStatus"
-                                    Style="{StaticResource CaptionTextBlockStyle}"
-                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                    TextWrapping="Wrap" />
-                            </StackPanel>
-                        </Flyout>
-                    </Button.Flyout>
-                </Button>
+                 checked); what each does is in its tooltip. Icons: a 24 x 24 set seen from above
+                 the laptop, its front at the bottom; the sources are art/mode-icons/*.svg, the
+                 geometry is inlined because a PathIcon's Data cannot be shared through a resource
+                 without {Binding}, which NativeAOT does not support reliably. -->
+            <Grid x:Name="ModeButtons" ColumnSpacing="6">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition />
+                    <ColumnDefinition />
+                    <ColumnDefinition />
+                    <ColumnDefinition />
+                </Grid.ColumnDefinitions>
+                <ToggleButton
+                    x:Name="OffButton"
+                    Padding="4,8,4,6"
+                    HorizontalAlignment="Stretch"
+                    AutomationProperties.Name="Off"
+                    ToolTipService.ToolTip="Off: no beamforming, the microphones as they are"
+                    Click="OnModeClick"
+                    Tag="0">
+                    <StackPanel Spacing="4">
+                        <Viewbox Width="40" Height="40">
+                            <PathIcon Width="24" Height="24" Data="F0 M8,7 H16 A1.5,1.5 0 0 1 17.5,8.5 V13.5 A1.5,1.5 0 0 1 16,15 H8 A1.5,1.5 0 0 1 6.5,13.5 V8.5 A1.5,1.5 0 0 1 8,7 Z M8,8.5 V13.5 H16 V8.5 Z M10,10 H14 V11.25 H10 Z M6.5,16 H17.5 A0.75,0.75 0 0 1 17.5,17.5 H6.5 A0.75,0.75 0 0 1 6.5,16 Z" />
+                        </Viewbox>
+                        <TextBlock HorizontalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}" Text="Off" />
+                    </StackPanel>
+                </ToggleButton>
+                <ToggleButton
+                    x:Name="CardioidButton"
+                    Grid.Column="1"
+                    Padding="4,8,4,6"
+                    HorizontalAlignment="Stretch"
+                    AutomationProperties.Name="Cardioid"
+                    ToolTipService.ToolTip="Cardioid: you in front; sound from behind the lid is cut"
+                    Click="OnModeClick"
+                    Tag="1">
+                    <StackPanel Spacing="4">
+                        <Viewbox Width="40" Height="40">
+                            <PathIcon Width="24" Height="24" Data="F0 M8,7 H16 A1.5,1.5 0 0 1 17.5,8.5 V13.5 A1.5,1.5 0 0 1 16,15 H8 A1.5,1.5 0 0 1 6.5,13.5 V8.5 A1.5,1.5 0 0 1 8,7 Z M8,8.5 V13.5 H16 V8.5 Z M10,10 H14 V11.25 H10 Z M6.5,16 H17.5 A0.75,0.75 0 0 1 17.5,17.5 H6.5 A0.75,0.75 0 0 1 6.5,16 Z M10.1,20.6 L12,18.7 L13.9,20.6 Z M20.0435,18.7493 A10.5,10.5 0 0 1 3.9565,18.7493 L4.9141,17.9458 A9.25,9.25 0 0 0 19.0859,17.9458 Z" />
+                        </Viewbox>
+                        <TextBlock HorizontalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}" Text="Cardioid" />
+                    </StackPanel>
+                </ToggleButton>
+                <ToggleButton
+                    x:Name="StereoButton"
+                    Grid.Column="2"
+                    Padding="4,8,4,6"
+                    HorizontalAlignment="Stretch"
+                    AutomationProperties.Name="Stereo"
+                    ToolTipService.ToolTip="Stereo: left and right, louder"
+                    Click="OnModeClick"
+                    Tag="2">
+                    <StackPanel Spacing="4">
+                        <Viewbox Width="40" Height="40">
+                            <PathIcon Width="24" Height="24" Data="F0 M8,7 H16 A1.5,1.5 0 0 1 17.5,8.5 V13.5 A1.5,1.5 0 0 1 16,15 H8 A1.5,1.5 0 0 1 6.5,13.5 V8.5 A1.5,1.5 0 0 1 8,7 Z M8,8.5 V13.5 H16 V8.5 Z M10,10 H14 V11.25 H10 Z M6.5,16 H17.5 A0.75,0.75 0 0 1 17.5,17.5 H6.5 A0.75,0.75 0 0 1 6.5,16 Z M3.6,10.1 L5.5,12 L3.6,13.9 Z M20.4,10.1 L18.5,12 L20.4,13.9 Z M10.1,20.6 L12,18.7 L13.9,20.6 Z M18.7493,3.9565 A10.5,10.5 0 1 1 5.2507,3.9565 L6.0542,4.9141 A9.25,9.25 0 1 0 17.9458,4.9141 Z" />
+                        </Viewbox>
+                        <TextBlock HorizontalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}" Text="Stereo" />
+                    </StackPanel>
+                </ToggleButton>
+                <ToggleButton
+                    x:Name="OmniButton"
+                    Grid.Column="3"
+                    Padding="4,8,4,6"
+                    HorizontalAlignment="Stretch"
+                    AutomationProperties.Name="Omni"
+                    ToolTipService.ToolTip="Omni: everything around the laptop"
+                    Click="OnModeClick"
+                    Tag="3">
+                    <StackPanel Spacing="4">
+                        <Viewbox Width="40" Height="40">
+                            <PathIcon Width="24" Height="24" Data="F0 M8,7 H16 A1.5,1.5 0 0 1 17.5,8.5 V13.5 A1.5,1.5 0 0 1 16,15 H8 A1.5,1.5 0 0 1 6.5,13.5 V8.5 A1.5,1.5 0 0 1 8,7 Z M8,8.5 V13.5 H16 V8.5 Z M10,10 H14 V11.25 H10 Z M6.5,16 H17.5 A0.75,0.75 0 0 1 17.5,17.5 H6.5 A0.75,0.75 0 0 1 6.5,16 Z M3.6,10.1 L5.5,12 L3.6,13.9 Z M20.4,10.1 L18.5,12 L20.4,13.9 Z M10.1,20.6 L12,18.7 L13.9,20.6 Z M10.1,3.6 L12,5.5 L13.9,3.6 Z M12,1.5 A10.5,10.5 0 1 1 12,22.5 A10.5,10.5 0 1 1 12,1.5 Z M12,2.75 A9.25,9.25 0 1 0 12,21.25 A9.25,9.25 0 1 0 12,2.75 Z" />
+                        </Viewbox>
+                        <TextBlock HorizontalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}" Text="Omni" />
+                    </StackPanel>
+                </ToggleButton>
             </Grid>
+
+            <InfoBar
+                x:Name="ArmouryBar"
+                IsClosable="False"
+                Message="Armoury Crate is running: at every boot it puts back the mode last chosen in it."
+                Severity="Informational"
+                Visibility="Collapsed" />
         </StackPanel>
     </Grid>
 </Window>

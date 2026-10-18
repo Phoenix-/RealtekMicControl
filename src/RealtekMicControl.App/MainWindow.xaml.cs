@@ -21,14 +21,6 @@ public sealed partial class MainWindow : Window
     /// <summary>In the order of the buttons; a button's Tag is its index here.</summary>
     private static readonly MicSetting[] Settings = [MicSetting.Off, MicSetting.Cardioid, MicSetting.Stereo, MicSetting.Omni];
 
-    private static readonly string[] Descriptions =
-    [
-        "No beamforming: the microphones as they are.",
-        "You in front; sound from behind the lid is cut.",
-        "Left and right, louder.",
-        "Everything around the laptop.",
-    ];
-
     private readonly ToggleButton[] _modeButtons;
 
     private ForteMicrophone? _microphone;
@@ -47,13 +39,21 @@ public sealed partial class MainWindow : Window
 
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBar);
+        // The TitleBar with a right header is 48 high; the caption buttons default to a 32-high
+        // band, which left the close button above the title and the gear.
+        AppWindow.TitleBar.PreferredHeightOption = TitleBarHeightOption.Tall;
+        ApplyCaptionButtonColors();
+        Root.ActualThemeChanged += (_, _) => ApplyCaptionButtonColors();
         SetIconFromExecutable();
         ShowBuildVersion();
-        if (AppWindow.Presenter is OverlappedPresenter presenter)
-        {
-            presenter.IsResizable = false;
-            presenter.IsMaximizable = false;
-        }
+        // A fixed-size window with only a close button. The presenter is created, not cast: under
+        // NativeAOT `AppWindow.Presenter is OverlappedPresenter` is false, and the published 0.2.0
+        // silently came out resizable and maximizable (a trap Meridian had already met).
+        var presenter = OverlappedPresenter.Create();
+        presenter.IsResizable = false;
+        presenter.IsMaximizable = false;
+        presenter.IsMinimizable = false;
+        AppWindow.SetPresenter(presenter);
 
         CenterOnScreen(logicalHeight: 420);
         Root.Loaded += (_, _) => FitToContent();
@@ -155,13 +155,6 @@ public sealed partial class MainWindow : Window
         {
             _modeButtons[i].IsChecked = i == index;
         }
-
-        var description = index >= 0 ? Descriptions[index] : "The stored mode is none of these four.";
-        if (ModeDescription.Text != description)
-        {
-            ModeDescription.Text = description;
-            FitToContent();
-        }
     }
 
     private void OnModeClick(object sender, RoutedEventArgs e)
@@ -239,16 +232,10 @@ public sealed partial class MainWindow : Window
         }
 
         var armouryCrate = Process.GetProcessesByName("ArmouryCrate.UserSessionHelper");
-        var visibility = armouryCrate.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+        SetOpen(ArmouryBar, armouryCrate.Length > 0);
         foreach (var process in armouryCrate)
         {
             process.Dispose();
-        }
-
-        if (ArmouryHint.Visibility != visibility)
-        {
-            ArmouryHint.Visibility = visibility;
-            FitToContent();
         }
 
         Refresh();
@@ -281,6 +268,29 @@ public sealed partial class MainWindow : Window
         bar.Visibility = visibility;
         FitToContent();
     }
+
+    /// <summary>
+    /// The close button is drawn by the system from <see cref="AppWindowTitleBar"/>'s colours, which
+    /// do not follow the XAML theme once content extends into the title bar: on a dark window it
+    /// stayed a dark glyph. Same fix as Meridian's TitleBarTheming, with the colours of the
+    /// standard caption buttons.
+    /// </summary>
+    private void ApplyCaptionButtonColors()
+    {
+        var titleBar = AppWindow.TitleBar;
+        var ink = Root.ActualTheme == ElementTheme.Dark ? Colors.White : Colors.Black;
+        titleBar.ButtonBackgroundColor = Colors.Transparent;
+        titleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
+        titleBar.ButtonForegroundColor = ink;
+        titleBar.ButtonHoverForegroundColor = ink;
+        titleBar.ButtonPressedForegroundColor = ink;
+        titleBar.ButtonInactiveForegroundColor = WithAlpha(ink, 0x5C);
+        titleBar.ButtonHoverBackgroundColor = WithAlpha(ink, 0x0F);
+        titleBar.ButtonPressedBackgroundColor = WithAlpha(ink, 0x0A);
+    }
+
+    private static Windows.UI.Color WithAlpha(Windows.UI.Color color, byte alpha) =>
+        Windows.UI.Color.FromArgb(alpha, color.R, color.G, color.B);
 
     /// <summary>Makes the client area exactly as tall as the content wants, at a fixed width.</summary>
     private void FitToContent()
