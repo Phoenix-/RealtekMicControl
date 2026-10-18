@@ -21,7 +21,7 @@ internal static class Program
             Console.WriteLine("""
                 MicProbe [--positions front,left,right,back] [--settings off,cardioid,stereo,omni]
                          [--configs default,default-reopen,comms,comms-reopen]
-                         [--seconds 4] [--settle 1.5] [--ns keep|off|on] [--no-raw] [--out DIR]
+                         [--seconds 4] [--settle 1.5] [--ns keep|off|on] [--no-raw] [--manual] [--out DIR]
 
                 --configs  how the processed stream is opened, each run in turn per position:
                            default        DEFAULT processing mode (an ordinary app), one stream
@@ -29,6 +29,8 @@ internal static class Program
                            comms          SPEECH processing mode (a call app: Discord, Teams)
                            *-reopen       a new stream for every take
                 --no-raw   do not record the raw reference stream alongside
+                --manual   do not switch the settings; ask for each one to be picked in Armoury
+                           Crate instead (and leave whatever it set at the end)
 
                 Levels are measured in the 150-7000 Hz band the test signal covers, so desk rumble
                 and fan noise below it do not skew the comparison.
@@ -41,6 +43,13 @@ internal static class Program
         {
             Console.Error.WriteLine("No Fortemedia microphone found.");
             return 2;
+        }
+
+        // With --manual Armoury Crate owns the switch; writing the old values back behind its back
+        // would only leave its UI showing something else.
+        if (options.Manual)
+        {
+            return Run(mic, options);
         }
 
         var original = mic.Read();
@@ -112,7 +121,20 @@ internal static class Program
                 using var live = config.Reopen ? null : CaptureStream.Open(mic.Id, category: config.Category);
                 foreach (var setting in options.Settings)
                 {
-                    mic.Apply(setting);
+                    if (options.Manual)
+                    {
+                        Console.Write($"   Select '{setting}' in Armoury Crate, then press Enter: ");
+                        Console.ReadLine();
+                        var stored = mic.Read();
+                        if (stored.Setting != setting)
+                        {
+                            Console.WriteLine($"   (the driver store says {stored.Setting?.ToString() ?? "unknown"}, K2={stored.ModeValue} K7=0x{stored.Flags:X} -- recording anyway)");
+                        }
+                    }
+                    else
+                    {
+                        mic.Apply(setting);
+                    }
                     using var perTake = config.Reopen ? CaptureStream.Open(mic.Id, category: config.Category) : null;
                     var source = perTake ?? live!;
                     CaptureStream[] streams = raw is null ? [source] : [source, raw];
@@ -346,6 +368,7 @@ internal sealed record Options(
     double Settle,
     bool? NoiseSuppression,
     bool Raw,
+    bool Manual,
     string OutputDirectory)
 {
     public static Options? Parse(string[] args)
@@ -357,7 +380,7 @@ internal sealed record Options(
         // Left alone by default: K9001 written through the property store snaps back within a
         // second (see notes/), so forcing it off would only pretend to.
         bool? ns = null;
-        var raw = true;
+        bool raw = true, manual = false;
         var output = Path.Combine("spike", $"probe-{DateTime.Now:yyyyMMdd-HHmmss}");
 
         for (var i = 0; i < args.Length; i++)
@@ -374,6 +397,7 @@ internal sealed record Options(
                     case "--settle": settle = double.Parse(Next(), CultureInfo.InvariantCulture); break;
                     case "--ns": ns = Next() switch { "on" => true, "off" => false, "keep" => null, var v => throw new ArgumentException(v) }; break;
                     case "--no-raw": raw = false; break;
+                    case "--manual": manual = true; break;
                     case "--out": output = Next(); break;
                     default: return null;
                 }
@@ -384,7 +408,7 @@ internal sealed record Options(
             }
         }
 
-        return new Options(positions, settings, configs, seconds, settle, ns, raw, output);
+        return new Options(positions, settings, configs, seconds, settle, ns, raw, manual, output);
     }
 }
 
