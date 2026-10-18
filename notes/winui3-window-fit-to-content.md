@@ -19,4 +19,7 @@ captures WinUI content, but call `SetThreadDpiAwarenessContext(PER_MONITOR_AWARE
 `GetWindowRect` hands a DPI-unaware PowerShell scaled-down coordinates and the capture comes out
 cropped -- which looks exactly like a layout bug. UI Automation from Windows PowerShell 5.1
 (`InvokePattern`, `SelectionItemPattern`, `TogglePattern`) drives the buttons; set
-`AutomationProperties.Name` on radio buttons whose content is more than one text block.
+`AutomationProperties.Name` on buttons whose content is more than a single text. One exception:
+a `ToggleButton`'s `TogglePattern.Toggle()` flips `IsChecked` without raising `Click`, so the mode
+buttons are tested with a real mouse click at the centre of the element's
+`BoundingRectangle` (again from a per-monitor-DPI-aware thread).

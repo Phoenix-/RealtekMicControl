@@ -5,6 +5,7 @@ using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
 using RealtekMicControl.Core;
 using Windows.Foundation;
 using Windows.Graphics;
@@ -17,14 +18,22 @@ public sealed partial class MainWindow : Window
     private const double LogicalWidth = 380;
     private const int ErrorCancelled = 1223;
 
+    /// <summary>In the order of the buttons; a button's Tag is its index here.</summary>
     private static readonly MicSetting[] Settings = [MicSetting.Off, MicSetting.Cardioid, MicSetting.Stereo, MicSetting.Omni];
+
+    private static readonly string[] Descriptions =
+    [
+        "No beamforming: the microphones as they are.",
+        "You in front; sound from behind the lid is cut.",
+        "Left and right, louder.",
+        "Everything around the laptop.",
+    ];
+
+    private readonly ToggleButton[] _modeButtons;
 
     private ForteMicrophone? _microphone;
     private RegistryWatcher? _watcher;
     private int _refreshQueued;
-
-    /// <summary>Set while the radio buttons are made to show the stored value, not a click.</summary>
-    private bool _showingState;
 
     /// <summary>The UAC prompt and the elevated run take the focus away; that is no reason to close.</summary>
     private bool _fixing;
@@ -34,6 +43,7 @@ public sealed partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        _modeButtons = [OffButton, CardioidButton, StereoButton, OmniButton];
 
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBar);
@@ -73,7 +83,11 @@ public sealed partial class MainWindow : Window
             ShowError(e.Message);
         }
 
-        ModeButtons.IsEnabled = _microphone is not null;
+        foreach (var button in _modeButtons)
+        {
+            button.IsEnabled = _microphone is not null;
+        }
+
         if (_microphone is null)
         {
             MicrophoneName.Text = string.Empty;
@@ -114,9 +128,7 @@ public sealed partial class MainWindow : Window
             var state = microphone.Read();
             var chain = microphone.ReadEffectChain();
 
-            _showingState = true;
-            ModeButtons.SelectedIndex = state.Setting is { } setting ? Array.IndexOf(Settings, setting) : -1;
-            _showingState = false;
+            ShowMode(state.Setting is { } setting ? Array.IndexOf(Settings, setting) : -1);
 
             ChainStatus.Text = chain switch
             {
@@ -133,16 +145,35 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private void OnModeChanged(object sender, SelectionChangedEventArgs e)
+    /// <summary>
+    /// Checks exactly the button of the stored mode, none for a value no UI writes. A click has
+    /// already toggled the clicked button on or off; this puts every button right afterwards.
+    /// </summary>
+    private void ShowMode(int index)
     {
-        if (_showingState || _microphone is not { } microphone || ModeButtons.SelectedIndex < 0)
+        for (var i = 0; i < _modeButtons.Length; i++)
+        {
+            _modeButtons[i].IsChecked = i == index;
+        }
+
+        var description = index >= 0 ? Descriptions[index] : "The stored mode is none of these four.";
+        if (ModeDescription.Text != description)
+        {
+            ModeDescription.Text = description;
+            FitToContent();
+        }
+    }
+
+    private void OnModeClick(object sender, RoutedEventArgs e)
+    {
+        if (_microphone is not { } microphone || sender is not ToggleButton { Tag: string tag })
         {
             return;
         }
 
         try
         {
-            microphone.Apply(Settings[ModeButtons.SelectedIndex]);
+            microphone.Apply(Settings[int.Parse(tag)]);
         }
         catch (Exception ex) when (ex is COMException or InvalidOperationException)
         {
